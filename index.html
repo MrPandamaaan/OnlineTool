@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Folienreckanlage – obere Bahn</title>
+<style>
+  body {
+    margin: 0;
+    background: #f5f5f5;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+  }
+  h2 { font-weight: 500; color: #333; margin: 0 0 16px; }
+  svg {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .chain-path {
+    fill: none;
+    stroke: #888;
+    stroke-width: 1.5;
+    stroke-dasharray: 6 4;
+  }
+  .kluppe {
+    fill: #c91a4a;
+    stroke: #000;
+    stroke-width: 0.5;
+  }
+  .kluppe.first {
+    fill: #2a76d4;
+    stroke: #0d3d7a;
+    stroke-width: 1;
+  }
+  .controls {
+    margin-top: 20px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 16px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  table { border-collapse: collapse; }
+  th, td { padding: 6px 12px; font-size: 13px; }
+  th { background: #f0f0f0; text-align: left; font-weight: 500; color: #444; }
+  td input { width: 80px; padding: 4px 6px; font-family: inherit; font-size: 13px; }
+  td.name { font-weight: 500; color: #555; }
+  .swatch {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 2px;
+    margin-right: 8px;
+    vertical-align: -2px;
+    border: 1px solid rgba(0,0,0,0.15);
+  }
+  .global-control { margin-bottom: 12px; font-size: 13px; }
+  .global-control input { width: 70px; padding: 4px 6px; font-family: inherit; font-size: 13px; margin-left: 6px; }
+  .global-control input[readonly] { background: #f5f5f5; color: #555; cursor: default; }
+  .global-control button {
+    margin-left: 18px;
+    padding: 5px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid #bbb;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .global-control button:hover { background: #f0f0f0; }
+  .global-control button:active { background: #e4e4e4; }
+
+  .graphs { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; justify-content: center; max-width: 1392px; }
+  .graphs-heading {
+    flex: 1 0 100%;
+    margin: 18px 0 2px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #444;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+  }
+  .graphs-heading:first-child { margin-top: 0; }
+  svg.graph { width: 340px; height: 200px; flex-shrink: 0; }
+  .graph-title { font-size: 13px; font-weight: 500; fill: #333; }
+  .graph-cur   { font-size: 12px; fill: #666; font-family: ui-monospace, monospace; }
+  .graph .axis { stroke: #888; stroke-width: 1; }
+  .graph .axis-label { font-size: 10px; fill: #888; }
+  .graph .tick-line  { stroke: #888; stroke-width: 1; }
+  .graph .tick-label { font-size: 10px; fill: #555; font-family: ui-monospace, monospace; }
+  .graph .grid-line  { stroke: #ececec; stroke-width: 0.5; }
+  .graph .line { fill: none; stroke-width: 1.5; }
+  .graph .line-s   { stroke: #2a76d4; }
+  .graph .line-v   { stroke: #e07a1d; }
+  .graph .line-a   { stroke: #c91a4a; }
+  .graph .line-gap { stroke: #2ca02c; }
+  .graph .line-z   { stroke: #9c27b0; }
+  .graph .line-i   { stroke: #00897b; }
+  .graph .line-st   { stroke: #2a76d4; }
+  .graph .line-vt   { stroke: #e07a1d; }
+  .graph .line-at   { stroke: #c91a4a; }
+  .graph .line-gapt { stroke: #2ca02c; }
+  .graph .line-zt   { stroke: #9c27b0; }
+  .graph .line-it   { stroke: #00897b; }
+  .graph .line-nReckt { stroke: #f47b3a; }
+  .graph .line-pMotort { stroke: #303f9f; }
+
+  /* ---------- Startup-Hinweis Modal ---------- */
+  #startup-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+  }
+  #startup-modal .box {
+    background: white;
+    max-width: 480px;
+    margin: 16px;
+    padding: 24px 28px;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  #startup-modal h3 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    color: #c91a4a;
+  }
+  #startup-modal p { margin: 0 0 16px; color: #333; }
+  #startup-modal button {
+    display: block;
+    margin: 0 auto;
+    padding: 8px 22px;
+    font: inherit;
+    background: #2a76d4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #startup-modal button:hover { background: #1f5fa8; }
+</style>
+</head>
+<body>
+
+<div id="startup-modal" role="dialog" aria-modal="true" aria-labelledby="startup-title">
+  <div class="box">
+    <h3 id="startup-title">Hinweis vor dem Start</h3>
+    <p>
+      Bitte das Browserfenster während der Nutzung des Tools <strong>nicht minimieren</strong>
+      und den Tab nicht in den Hintergrund schicken.
+      Die Simulation läuft über <code>requestAnimationFrame</code> und wird vom Browser
+      pausiert, sobald das Fenster nicht sichtbar ist — die Ergebnisse sind dann verfälscht.
+    </p>
+    <button type="button" id="startup-ok">Verstanden</button>
+  </div>
+</div>
+
+<script>
+  // Modal beim ersten Klick auf "Verstanden" schließen
+  document.getElementById('startup-ok').addEventListener('click', () => {
+    document.getElementById('startup-modal').remove();
+  });
+</script>
+
+<svg id="stage" viewBox="0 0 1080 160" width="1080" height="160">
+  <defs>
+    <pattern id="grid-pat" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="#e8e8e8" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <!-- Maschinen-Bereich: (40,30) bis (1010,106) = 970 × 76 px = 48.5 × 3.8 m -->
+  <rect x="40" y="30" width="970" height="76" fill="url(#grid-pat)"/>
+  <rect x="40" y="30" width="970" height="76" fill="none" stroke="#bbb" stroke-width="0.5"/>
+
+  <!-- Dimensionierung -->
+  <g class="dim" fill="#444" stroke="#555">
+    <!-- Breite: 48.5 m -->
+    <line x1="40"   y1="111" x2="40"   y2="131" stroke-width="0.6"/>
+    <line x1="1010" y1="111" x2="1010" y2="131" stroke-width="0.6"/>
+    <line x1="40"   y1="124" x2="1010" y2="124" stroke-width="0.7"/>
+    <path d="M 40 124 L 48 121 L 48 127 Z"/>
+    <path d="M 1010 124 L 1002 121 L 1002 127 Z"/>
+    <text x="525" y="120" text-anchor="middle" font-size="11" stroke="none">48.5 m</text>
+
+    <!-- Höhe: 3.8 m -->
+    <line x1="9"  y1="30"  x2="29" y2="30"  stroke-width="0.6"/>
+    <line x1="9"  y1="106" x2="29" y2="106" stroke-width="0.6"/>
+    <line x1="22" y1="30"  x2="22" y2="106" stroke-width="0.7"/>
+    <path d="M 22 30  L 19 38 L 25 38 Z"/>
+    <path d="M 22 106 L 19 98 L 25 98 Z"/>
+    <text x="13" y="68" text-anchor="middle" font-size="11" stroke="none" transform="rotate(-90 13 68)">3.8 m</text>
+  </g>
+
+  <g id="zone-bg"></g>
+  <path id="chain" class="chain-path" />
+  <g id="kluppen"></g>
+</svg>
+
+<div class="controls">
+  <div class="global-control">
+    <label>Anzahl Kluppen:
+      <input type="number" id="num-kluppen" value="60" min="1" max="500">
+    </label>
+    <label style="margin-left: 18px;">Spawn-Intervall (s):
+      <input type="number" id="spawn-interval" value="1.675" step="0.025" min="0.05">
+    </label>
+    <label style="margin-left: 18px;">Sim-Faktor:
+      <input type="number" id="sim-speed" value="10" step="0.1" min="0.1" max="100">×
+    </label>
+  </div>
+  <div class="global-control">
+    <label>Zeitfenster (s):
+      <input type="number" id="time-window" value="30" readonly tabindex="-1" title="Wird automatisch aus den Zonen-Geschwindigkeiten berechnet (eine Runde)">
+    </label>
+    <label style="margin-left: 18px;">v_Kette (m/s):
+      <input type="number" id="v-kette" value="3" step="0.1" min="0.01">
+    </label>
+    <button id="start-btn" type="button">Start</button>
+    <button id="pause-btn" type="button" disabled>Pause</button>
+    <button id="reset-btn" type="button">Reset</button>
+  </div>
+  <div class="global-control">
+    <label>F_R (N):
+      <input type="number" id="f-reib" value="50" step="5" min="0">
+    </label>
+    <label style="margin-left: 18px;">F_T (N):
+      <input type="number" id="f-trans" value="200" step="10" min="0">
+    </label>
+    <label style="margin-left: 18px;">F_Z (N):
+      <input type="number" id="f-zug" value="500" step="50" min="0">
+    </label>
+    <label style="margin-left: 18px;">η:
+      <input type="number" id="eta" value="0.85" step="0.05" min="0.1" max="1">
+    </label>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Zone</th>
+        <th>Start (m)</th>
+        <th>Ende (m)</th>
+        <th>v_Start (m/s)</th>
+        <th>v_Ende (m/s)</th>
+      </tr>
+    </thead>
+    <tbody id="zones-tbody"></tbody>
+  </table>
+</div>
+
+<div class="graphs">
+  <h3 class="graphs-heading">Verläufe über die Position</h3>
+  <svg class="graph" viewBox="0 0 340 200" data-key="s">
+    <text class="graph-title" x="50" y="18">s [m] – Strecke (1. Kluppe)</text>
+    <text class="graph-cur" id="cur-s" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-s"></g>
+    <g class="ticks" id="ticks-s"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">Position [m]</text>
+    <path class="line line-s" id="line-s" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="v">
+    <text class="graph-title" x="50" y="18">v [m/s] – Geschwindigkeit</text>
+    <text class="graph-cur" id="cur-v" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-v"></g>
+    <g class="ticks" id="ticks-v"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">Position [m]</text>
+    <path class="line line-v" id="line-v" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="a">
+    <text class="graph-title" x="50" y="18">a [m/s²] – Beschleunigung</text>
+    <text class="graph-cur" id="cur-a" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-a"></g>
+    <g class="ticks" id="ticks-a"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">Position [m]</text>
+    <path class="line line-a" id="line-a" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="gap">
+    <text class="graph-title" x="50" y="18">Δs [m] – Abstand 1.→2. Kluppe</text>
+    <text class="graph-cur" id="cur-gap" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-gap"></g>
+    <g class="ticks" id="ticks-gap"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">Position [m]</text>
+    <path class="line line-gap" id="line-gap" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="z">
+    <text class="graph-title" x="50" y="18">z_2/z_3 = v_Kette/v_Kluppe − 1</text>
+    <text class="graph-cur" id="cur-z" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-z"></g>
+    <g class="ticks" id="ticks-z"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">Position [m]</text>
+    <path class="line line-z" id="line-z" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="i">
+    <text class="graph-title" x="50" y="18">i = z_3/z_2 – Übersetzungsverhältnis</text>
+    <text class="graph-cur" id="cur-i" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-i"></g>
+    <g class="ticks" id="ticks-i"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">Position [m]</text>
+    <path class="line line-i" id="line-i" />
+  </svg>
+  <h3 class="graphs-heading">Verläufe über die Zeit</h3>
+  <svg class="graph" viewBox="0 0 340 200" data-key="st">
+    <text class="graph-title" x="50" y="18">s [m] – Strecke / Zeit</text>
+    <text class="graph-cur" id="cur-st" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-st"></g>
+    <g class="ticks" id="ticks-st"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">t [s]</text>
+    <path class="line line-st" id="line-st" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="vt">
+    <text class="graph-title" x="50" y="18">v [m/s] – Geschwindigkeit / Zeit</text>
+    <text class="graph-cur" id="cur-vt" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-vt"></g>
+    <g class="ticks" id="ticks-vt"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">t [s]</text>
+    <path class="line line-vt" id="line-vt" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="at">
+    <text class="graph-title" x="50" y="18">a [m/s²] – Beschleunigung / Zeit</text>
+    <text class="graph-cur" id="cur-at" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-at"></g>
+    <g class="ticks" id="ticks-at"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">t [s]</text>
+    <path class="line line-at" id="line-at" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="gapt">
+    <text class="graph-title" x="50" y="18">Δs [m] – Abstand / Zeit</text>
+    <text class="graph-cur" id="cur-gapt" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-gapt"></g>
+    <g class="ticks" id="ticks-gapt"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">t [s]</text>
+    <path class="line line-gapt" id="line-gapt" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="zt">
+    <text class="graph-title" x="50" y="18">z_2/z_3 / Zeit</text>
+    <text class="graph-cur" id="cur-zt" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-zt"></g>
+    <g class="ticks" id="ticks-zt"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">t [s]</text>
+    <path class="line line-zt" id="line-zt" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="it">
+    <text class="graph-title" x="50" y="18">i = z_3/z_2 / Zeit</text>
+    <text class="graph-cur" id="cur-it" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-it"></g>
+    <g class="ticks" id="ticks-it"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">t [s]</text>
+    <path class="line line-it" id="line-it" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="nReckt">
+    <text class="graph-title" x="50" y="18">N – Kluppen in Reckzone</text>
+    <text class="graph-cur" id="cur-nReckt" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-nReckt"></g>
+    <g class="ticks" id="ticks-nReckt"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">t [s]</text>
+    <path class="line line-nReckt" id="line-nReckt" />
+  </svg>
+  <svg class="graph" viewBox="0 0 340 200" data-key="pMotort">
+    <text class="graph-title" x="50" y="18">P_Motor [W]</text>
+    <text class="graph-cur" id="cur-pMotort" x="320" y="18" text-anchor="end">–</text>
+    <g class="grid" id="grid-pMotort"></g>
+    <g class="ticks" id="ticks-pMotort"></g>
+    <line class="axis" x1="50" y1="30"  x2="50"  y2="160" />
+    <line class="axis" x1="50" y1="160" x2="320" y2="160" />
+    <text class="axis-label" x="320" y="192" text-anchor="end">t [s]</text>
+    <path class="line line-pMotort" id="line-pMotort" />
+  </svg>
+</div>
+
+<script>
+  const svg = document.getElementById('stage');
+  const path = document.getElementById('chain');
+  const kluppenGroup = document.getElementById('kluppen');
+
+  // Maßstab: 20 SVG-px pro Meter
+  const PX_PER_M = 20;
+
+  // Eckpunkte des Pfads (SVG-Koordinaten)
+  // Maschinenbereich: (40,30) bis (1010,106) = 48.5 × 3.8 m
+  const points = {
+    outerStart:      { x:   40, y: 100 },
+    outerVorheizung: { x:  200, y: 100 },
+    outerReckzone:   { x:  480, y:  50 },
+    outerEnd:        { x: 1010, y:  50 },
+    innerEnd:        { x: 1010, y:  40 },
+    innerReckzone:   { x:  480, y:  40 },
+    innerVorheizung: { x:  200, y:  90 },
+    innerStart:      { x:   40, y:  90 },
+  };
+
+  function buildPathD(p) {
+    const rRight = Math.hypot(p.innerEnd.x - p.outerEnd.x, p.innerEnd.y - p.outerEnd.y) / 2;
+    const rLeft  = Math.hypot(p.outerStart.x - p.innerStart.x, p.outerStart.y - p.innerStart.y) / 2;
+    return `M ${p.outerStart.x} ${p.outerStart.y}
+            L ${p.outerVorheizung.x} ${p.outerVorheizung.y}
+            L ${p.outerReckzone.x} ${p.outerReckzone.y}
+            L ${p.outerEnd.x} ${p.outerEnd.y}
+            A ${rRight} ${rRight} 0 0 0 ${p.innerEnd.x} ${p.innerEnd.y}
+            L ${p.innerReckzone.x} ${p.innerReckzone.y}
+            L ${p.innerVorheizung.x} ${p.innerVorheizung.y}
+            L ${p.innerStart.x} ${p.innerStart.y}
+            A ${rLeft} ${rLeft} 0 0 0 ${p.outerStart.x} ${p.outerStart.y}
+            Z`;
+  }
+
+  // Initiales Setzen, damit getTotalLength() funktioniert
+  path.setAttribute('d', buildPathD(points));
+  let totalLenPx = path.getTotalLength();
+  let totalLenM  = totalLenPx / PX_PER_M;
+
+  // Zonen entlang des Pfads (in m). vStart === vEnd → konstant.
+  const zones = [
+    { name: 'Vorheizung',      start:    0, end:   8.0,       vStart: 0.267, vEnd: 0.267, color: '#ffd54a' },
+    { name: 'Reckzone',        start:  8.0, end:  22.2,       vStart: 0.267, vEnd: 2,     color: '#f47b3a' },
+    { name: 'Konstantbereich', start: 22.2, end:  48.7,       vStart: 2,     vEnd: 2,     color: '#7ab8e0' },
+    { name: 'Rückführung',     start: 48.7, end: totalLenM,   vStart: 2,     vEnd: 0.267, color: '#cccccc' },
+  ];
+
+  // ----- Hintergrund-Bänder pro Zone -----
+  const zoneBg = document.getElementById('zone-bg');
+  const zonePaths = zones.map(z => {
+    const zp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    zp.setAttribute('d', path.getAttribute('d'));
+    zp.setAttribute('fill', 'none');
+    zp.setAttribute('stroke-width', '22');
+    zp.setAttribute('stroke-linecap', 'butt');
+    zoneBg.appendChild(zp);
+    return zp;
+  });
+
+  function updateZoneBg() {
+    zones.forEach((z, i) => {
+      const startPx = Math.max(0, Math.min(totalLenPx, z.start * PX_PER_M));
+      const endPx   = Math.max(0, Math.min(totalLenPx, z.end   * PX_PER_M));
+      const lenPx   = Math.max(0, endPx - startPx);
+      const tailPx  = Math.max(0, totalLenPx - endPx);
+      zonePaths[i].setAttribute('stroke', z.color);
+      zonePaths[i].setAttribute('stroke-dasharray', `0 ${startPx} ${lenPx} ${tailPx}`);
+    });
+  }
+  updateZoneBg();
+
+  // Geschwindigkeit (m/s) an Position d (m).
+  // v(s) bei konstanter Beschleunigung in der Zone:
+  //   a = (vEnd² - vStart²) / (2L)  →  v(s) = √(vStart² + (vEnd² - vStart²) · t)
+  function getSpeedAt(d) {
+    for (const z of zones) {
+      if (d >= z.start && d < z.end) {
+        const t = (d - z.start) / (z.end - z.start);
+        const v2 = z.vStart * z.vStart + (z.vEnd * z.vEnd - z.vStart * z.vStart) * t;
+        return Math.sqrt(Math.max(0, v2));
+      }
+    }
+    return zones[zones.length - 1].vEnd;
+  }
+
+  // Analytische Beschleunigung (konstant pro Zone): a = (vEnd² - vStart²) / (2L)
+  function getAccelAt(d) {
+    for (const z of zones) {
+      if (d >= z.start && d < z.end) {
+        const len = z.end - z.start;
+        if (len <= 0) return 0;
+        return (z.vEnd * z.vEnd - z.vStart * z.vStart) / (2 * len);
+      }
+    }
+    return 0;
+  }
+
+  // ----- UI: Zonen-Tabelle -----
+  const tbody = document.getElementById('zones-tbody');
+
+  zones.forEach((z, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="name"><span class="swatch" style="background:${z.color}"></span>${z.name}</td>
+      <td><input type="number" step="0.1" data-i="${i}" data-k="start"  value="${z.start.toFixed(1)}"></td>
+      <td><input type="number" step="0.1" data-i="${i}" data-k="end"    value="${z.end.toFixed(1)}"></td>
+      <td><input type="number" step="0.1" data-i="${i}" data-k="vStart" value="${z.vStart}"></td>
+      <td><input type="number" step="0.1" data-i="${i}" data-k="vEnd"   value="${z.vEnd}"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.addEventListener('input', e => {
+    const t = e.target;
+    if (t.tagName !== 'INPUT') return;
+    const v = parseFloat(t.value);
+    if (isNaN(v)) return;
+    zones[+t.dataset.i][t.dataset.k] = v;
+    updateZoneBg();
+    updateTimeWindow();
+  });
+
+  // ----- Animation -----
+  const KLUPPE_W = 12;
+  const KLUPPE_H = 7;
+  let kluppen = [];
+
+  const numInput      = document.getElementById('num-kluppen');
+  const intervalInput = document.getElementById('spawn-interval');
+  let spawnIntervalS  = parseFloat(intervalInput.value);
+  let pendingSpawns   = 0;
+  let spawnTimer      = 0;
+
+  function spawnOne() {
+    const isFirst = kluppen.length === 0;
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    const w = isFirst ? KLUPPE_W + 2 : KLUPPE_W;
+    const h = isFirst ? KLUPPE_H + 2 : KLUPPE_H;
+    rect.setAttribute('width', w);
+    rect.setAttribute('height', h);
+    rect.setAttribute('class', isFirst ? 'kluppe first' : 'kluppe');
+    rect.dataset.w = w;
+    rect.dataset.h = h;
+    kluppenGroup.appendChild(rect);
+    kluppen.push({ distance: 0, el: rect, w, h });
+  }
+
+  function resetKluppen() {
+    kluppenGroup.innerHTML = '';
+    kluppen = [];
+    pendingSpawns = Math.max(0, parseInt(numInput.value, 10) || 0);
+    spawnTimer = 0;
+    resetTracking();
+    if (pendingSpawns > 0) {
+      spawnOne();
+      pendingSpawns--;
+    }
+    paused = true;
+    if (pauseBtn) {
+      pauseBtn.textContent = 'Pause';
+      pauseBtn.disabled = true;
+    }
+    if (startBtn) {
+      startBtn.disabled = false;
+    }
+  }
+
+  // ----- Tracking & Graphen für die erste Kluppe -----
+  const timeWindowInput = document.getElementById('time-window');
+  let   timeWindowS     = 30;
+
+  // Analytische Rundendauer bei konstanter Beschleunigung pro Zone:
+  // t = 2L / (vStart + vEnd) (deckt auch konstante Zonen mit vStart = vEnd ab)
+  function computeCycleDuration() {
+    let total = 0;
+    for (const z of zones) {
+      const len = z.end - z.start;
+      if (len <= 0) continue;
+      const sum = z.vStart + z.vEnd;
+      if (sum <= 0) return 0;
+      total += 2 * len / sum;
+    }
+    return total;
+  }
+  function updateTimeWindow() {
+    const t = computeCycleDuration();
+    if (t > 0 && isFinite(t)) {
+      timeWindowS = t;
+      timeWindowInput.value = t.toFixed(1);
+    }
+  }
+  updateTimeWindow();
+
+  const RECORD_DELTA_M = 0.5;   // ein Datenpunkt pro 0.5 m zurückgelegter Strecke
+  const PLOT_X0 = 50, PLOT_X1 = 320, PLOT_Y0 = 30, PLOT_Y1 = 160;
+
+  function svgEl(tag, attrs, text) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    if (text != null) el.textContent = text;
+    return el;
+  }
+
+  function fmt(v) {
+    const a = Math.abs(v);
+    if (a === 0)    return '0';
+    if (a >= 100)   return v.toFixed(0);
+    if (a >= 10)    return v.toFixed(1);
+    if (a >= 1)     return v.toFixed(2);
+    if (a >= 0.01)  return v.toFixed(3);
+    return v.toExponential(1);
+  }
+
+  function niceTicks(min, max, count) {
+    if (max - min < 1e-9) return [min];
+    const rough = (max - min) / count;
+    const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+    const norm = rough / mag;
+    let step;
+    if (norm < 1.5)      step = 1 * mag;
+    else if (norm < 3)   step = 2 * mag;
+    else if (norm < 7)   step = 5 * mag;
+    else                 step = 10 * mag;
+    const start = Math.ceil(min / step) * step;
+    const ticks = [];
+    for (let v = start; v <= max + step * 1e-6; v += step) ticks.push(v);
+    return ticks;
+  }
+
+  function renderTicks(key, minY, maxY, tStart, tEnd) {
+    const grid  = document.getElementById('grid-'  + key);
+    const ticks = document.getElementById('ticks-' + key);
+    grid.innerHTML  = '';
+    ticks.innerHTML = '';
+
+    niceTicks(minY, maxY, 5).forEach(v => {
+      if (v < minY - 1e-9 || v > maxY + 1e-9) return;
+      const y = PLOT_Y1 - ((v - minY) / (maxY - minY)) * (PLOT_Y1 - PLOT_Y0);
+      grid.appendChild(svgEl('line', { class: 'grid-line', x1: PLOT_X0, y1: y, x2: PLOT_X1, y2: y }));
+      ticks.appendChild(svgEl('line', { class: 'tick-line', x1: PLOT_X0 - 3, y1: y, x2: PLOT_X0, y2: y }));
+      ticks.appendChild(svgEl('text', { class: 'tick-label', x: PLOT_X0 - 5, y: y + 3, 'text-anchor': 'end' }, fmt(v)));
+    });
+
+    niceTicks(tStart, tEnd, 6).forEach(v => {
+      if (v < tStart - 1e-9 || v > tEnd + 1e-9) return;
+      const x = PLOT_X0 + ((v - tStart) / (tEnd - tStart)) * (PLOT_X1 - PLOT_X0);
+      grid.appendChild(svgEl('line', { class: 'grid-line', x1: x, y1: PLOT_Y0, x2: x, y2: PLOT_Y1 }));
+      ticks.appendChild(svgEl('line', { class: 'tick-line', x1: x, y1: PLOT_Y1, x2: x, y2: PLOT_Y1 + 3 }));
+      ticks.appendChild(svgEl('text', { class: 'tick-label', x: x, y: PLOT_Y1 + 14, 'text-anchor': 'middle' }, fmt(v)));
+    });
+  }
+
+  let simTime = 0;
+  let lastRecordCumDist = 0;
+  let cumDist = 0;
+  let history = [];
+  let cycleCompleted = false;
+
+  const GRAPH_DEFS = {
+    s:    { dataKey: 's',   xMode: 'pos',  color: '#2a76d4', title: 's [m] – Strecke (1. Kluppe)',           xLabel: 'Position [m]' },
+    v:    { dataKey: 'v',   xMode: 'pos',  color: '#e07a1d', title: 'v [m/s] – Geschwindigkeit',             xLabel: 'Position [m]' },
+    a:    { dataKey: 'a',   xMode: 'pos',  color: '#c91a4a', title: 'a [m/s²] – Beschleunigung',             xLabel: 'Position [m]' },
+    gap:  { dataKey: 'gap', xMode: 'pos',  color: '#2ca02c', title: 'Δs [m] – Abstand 1.→2. Kluppe',         xLabel: 'Position [m]' },
+    z:    { dataKey: 'z',   xMode: 'pos',  color: '#9c27b0', title: 'z_2/z_3 = v_Kette/v_Kluppe − 1',         xLabel: 'Position [m]' },
+    i:    { dataKey: 'i',   xMode: 'pos',  color: '#00897b', title: 'i = z_3/z_2 – Übersetzungsverhältnis',   xLabel: 'Position [m]' },
+    st:   { dataKey: 's',   xMode: 'time', color: '#2a76d4', title: 's [m] – Strecke / Zeit',                 xLabel: 't [s]' },
+    vt:   { dataKey: 'v',   xMode: 'time', color: '#e07a1d', title: 'v [m/s] – Geschwindigkeit / Zeit',       xLabel: 't [s]' },
+    at:   { dataKey: 'a',   xMode: 'time', color: '#c91a4a', title: 'a [m/s²] – Beschleunigung / Zeit',       xLabel: 't [s]' },
+    gapt: { dataKey: 'gap', xMode: 'time', color: '#2ca02c', title: 'Δs [m] – Abstand / Zeit',                xLabel: 't [s]' },
+    zt:   { dataKey: 'z',   xMode: 'time', color: '#9c27b0', title: 'z_2/z_3 / Zeit',                          xLabel: 't [s]' },
+    it:   { dataKey: 'i',   xMode: 'time', color: '#00897b', title: 'i = z_3/z_2 / Zeit',                      xLabel: 't [s]' },
+    nReckt: { dataKey: 'nReck',  xMode: 'time', color: '#f47b3a', title: 'N – Kluppen in Reckzone',             xLabel: 't [s]' },
+    pMotort:{ dataKey: 'pMotor', xMode: 'time', color: '#303f9f', title: 'P_Motor [W]',                          xLabel: 't [s]' },
+  };
+  const GRAPH_KEYS = Object.keys(GRAPH_DEFS);
+
+  function resetTracking() {
+    simTime = 0;
+    lastRecordCumDist = 0;
+    cumDist = 0;
+    history = [];
+    cycleCompleted = false;
+    GRAPH_KEYS.forEach(k => {
+      document.getElementById('line-'  + k).setAttribute('d', '');
+      document.getElementById('cur-'   + k).textContent = '–';
+      document.getElementById('grid-'  + k).innerHTML = '';
+      document.getElementById('ticks-' + k).innerHTML = '';
+    });
+  }
+
+  function updateGraphs() {
+    if (history.length < 2) return;
+
+    GRAPH_KEYS.forEach(id => {
+      const def = GRAPH_DEFS[id];
+      const dk  = def.dataKey;
+      const lineEl = document.getElementById('line-' + id);
+      const curEl  = document.getElementById('cur-'  + id);
+
+      const valid = history.filter(d => Number.isFinite(d[dk]));
+      if (valid.length < 2) {
+        lineEl.setAttribute('d', '');
+        curEl.textContent = '–';
+        return;
+      }
+
+      let minY = Math.min(...valid.map(d => d[dk]));
+      let maxY = Math.max(...valid.map(d => d[dk]));
+      if (Math.abs(maxY - minY) < 1e-3) {
+        const c = (maxY + minY) / 2;
+        minY = c - 0.5; maxY = c + 0.5;
+      } else {
+        const pad = (maxY - minY) * 0.1;
+        minY -= pad; maxY += pad;
+      }
+
+      let xStart, xEnd;
+      if (def.xMode === 'pos') {
+        xStart = 0;
+        xEnd = totalLenM;
+      } else {
+        xStart = Math.max(0, simTime - timeWindowS);
+        xEnd = xStart + timeWindowS;
+      }
+
+      let d = '';
+      let prev = false;
+      let prevX = -Infinity;
+      for (const point of history) {
+        if (!Number.isFinite(point[dk])) { prev = false; prevX = -Infinity; continue; }
+        const xVal = def.xMode === 'pos' ? point.pos : point.t;
+        if (def.xMode === 'pos' && prevX > -Infinity && xVal < prevX) prev = false;
+        const x = PLOT_X0 + ((xVal - xStart) / (xEnd - xStart)) * (PLOT_X1 - PLOT_X0);
+        const y = PLOT_Y1 - ((point[dk] - minY) / (maxY - minY)) * (PLOT_Y1 - PLOT_Y0);
+        d += (prev ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+        prev = true;
+        prevX = xVal;
+      }
+      lineEl.setAttribute('d', d.trim());
+
+      const lastVal = history[history.length - 1][dk];
+      curEl.textContent = Number.isFinite(lastVal) ? fmt(lastVal) : '–';
+      renderTicks(id, minY, maxY, xStart, xEnd);
+    });
+  }
+
+  let paused = true;
+  const pauseBtn = document.getElementById('pause-btn');
+  const startBtn = document.getElementById('start-btn');
+  pauseBtn.addEventListener('click', () => {
+    if (cycleCompleted) return;
+    paused = !paused;
+    pauseBtn.textContent = paused ? 'Weiter' : 'Pause';
+  });
+  startBtn.addEventListener('click', () => {
+    if (cycleCompleted) return;
+    paused = false;
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    pauseBtn.textContent = 'Pause';
+  });
+
+  resetKluppen();
+
+  numInput.addEventListener('input', () => {
+    const n = parseInt(numInput.value, 10);
+    if (!isNaN(n) && n > 0 && n <= 500) resetKluppen();
+  });
+  intervalInput.addEventListener('input', () => {
+    const v = parseFloat(intervalInput.value);
+    if (!isNaN(v) && v > 0) spawnIntervalS = v;
+  });
+
+  const simSpeedInput = document.getElementById('sim-speed');
+  let simSpeedFactor  = parseFloat(simSpeedInput.value) || 1;
+  simSpeedInput.addEventListener('input', () => {
+    const v = parseFloat(simSpeedInput.value);
+    if (!isNaN(v) && v > 0) simSpeedFactor = v;
+  });
+
+  const vKetteInput = document.getElementById('v-kette');
+  let vKette = parseFloat(vKetteInput.value) || 1;
+  vKetteInput.addEventListener('input', () => {
+    const v = parseFloat(vKetteInput.value);
+    if (!isNaN(v) && v > 0) vKette = v;
+  });
+
+  const fReibInput = document.getElementById('f-reib');
+  let fReib = parseFloat(fReibInput.value) || 50;
+  fReibInput.addEventListener('input', () => {
+    const v = parseFloat(fReibInput.value);
+    if (!isNaN(v) && v >= 0) fReib = v;
+  });
+
+  const fTransInput = document.getElementById('f-trans');
+  let fTrans = parseFloat(fTransInput.value) || 200;
+  fTransInput.addEventListener('input', () => {
+    const v = parseFloat(fTransInput.value);
+    if (!isNaN(v) && v >= 0) fTrans = v;
+  });
+
+  const fZugInput = document.getElementById('f-zug');
+  let fZug = parseFloat(fZugInput.value) || 500;
+  fZugInput.addEventListener('input', () => {
+    const v = parseFloat(fZugInput.value);
+    if (!isNaN(v) && v >= 0) fZug = v;
+  });
+
+  const etaInput = document.getElementById('eta');
+  let etaVal = parseFloat(etaInput.value) || 0.85;
+  etaInput.addEventListener('input', () => {
+    const v = parseFloat(etaInput.value);
+    if (!isNaN(v) && v > 0 && v <= 1) etaVal = v;
+  });
+
+  document.getElementById('reset-btn').addEventListener('click', resetKluppen);
+
+  let lastTime = performance.now();
+
+  function tick(now) {
+    if (paused) {
+      lastTime = now;
+      requestAnimationFrame(tick);
+      return;
+    }
+    const dt = ((now - lastTime) / 1000) * simSpeedFactor;
+    lastTime = now;
+
+    if (pendingSpawns > 0) {
+      spawnTimer += dt;
+      while (spawnTimer >= spawnIntervalS && pendingSpawns > 0) {
+        spawnOne();
+        spawnTimer -= spawnIntervalS;
+        pendingSpawns--;
+      }
+    }
+
+    for (const k of kluppen) {
+      const v = getSpeedAt(k.distance);                       // m/s
+      k.distance = (k.distance + v * dt) % totalLenM;         // m
+
+      const dPx = k.distance * PX_PER_M;
+      const p  = path.getPointAtLength(dPx);
+      const p2 = path.getPointAtLength((dPx + 1) % totalLenPx);
+      const angle = Math.atan2(p2.y - p.y, p2.x - p.x) * 180 / Math.PI;
+
+      k.el.setAttribute('x', p.x - k.w / 2);
+      k.el.setAttribute('y', p.y - k.h / 2);
+      k.el.setAttribute('transform', `rotate(${angle} ${p.x} ${p.y})`);
+    }
+
+    simTime += dt;
+
+    // Reckzone-Zählung + Motorleistung (F_R überall, F_T in Vorheizung+Konstantbereich, F_Z in Reckzone)
+    const reckStart = zones[1].start, reckEnd = zones[1].end;
+    const transA_S = zones[0].start, transA_E = zones[0].end;
+    const transB_S = zones[2].start, transB_E = zones[2].end;
+    let nReck = 0, sumV_all = 0, sumV_Reck = 0, sumV_Trans = 0;
+    for (const k of kluppen) {
+      const vk = getSpeedAt(k.distance);
+      sumV_all += vk;
+      if (k.distance >= reckStart && k.distance < reckEnd) {
+        nReck++;
+        sumV_Reck += vk;
+      } else if ((k.distance >= transA_S && k.distance < transA_E) ||
+                 (k.distance >= transB_S && k.distance < transB_E)) {
+        sumV_Trans += vk;
+      }
+    }
+    const pMotor = (fReib * sumV_all + fTrans * sumV_Trans + fZug * sumV_Reck) / etaVal;
+
+    if (kluppen.length > 0) {
+      const vNow = getSpeedAt(kluppen[0].distance);
+      cumDist += vNow * dt;
+
+      // Bei jedem überschrittenen 0.5-m-Schritt einen Datenpunkt schreiben.
+      let recorded = false;
+      while (cumDist - lastRecordCumDist >= RECORD_DELTA_M) {
+        lastRecordCumDist += RECORD_DELTA_M;
+        const recPos = ((lastRecordCumDist % totalLenM) + totalLenM) % totalLenM;
+        const v = getSpeedAt(recPos);
+        const a = getAccelAt(recPos);
+        let gap = 0;
+        if (kluppen.length >= 2) {
+          gap = kluppen[0].distance - kluppen[1].distance;
+          if (gap < 0) gap += totalLenM;
+        }
+        const z = v > 1e-6 ? (vKette / v) - 1 : 0;
+        const iVal = Math.abs(z) > 1e-3 ? 1 / z : NaN;
+        const record = { t: simTime, pos: recPos, s: lastRecordCumDist, v, a, gap, z, i: iVal, nReck, pMotor };
+        history.push(record);
+        recorded = true;
+      }
+
+      if (recorded) {
+        while (history.length && history[0].t < simTime - timeWindowS) history.shift();
+        updateGraphs();
+      }
+
+      if (!cycleCompleted && cumDist >= totalLenM) {
+        cycleCompleted = true;
+        paused = true;
+        pauseBtn.textContent = 'Fertig';
+        pauseBtn.disabled = true;
+        startBtn.disabled = true;
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  requestAnimationFrame(tick);
+</script>
+
+</body>
+</html>
